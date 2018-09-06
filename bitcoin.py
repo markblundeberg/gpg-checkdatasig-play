@@ -216,7 +216,7 @@ class SimpleTx:
             raise ValueError("Missing SIGHASH_FORKID. Digest in non-forkid mode not implemented!")
         basetype = nhashtype | 0x1f
 
-        if nhashtype | SIGHASH_ANYONECANPAY:
+        if nhashtype & SIGHASH_ANYONECANPAY:
             hashPrevouts = zero32
             hashSequence = zero32
         else:
@@ -239,20 +239,23 @@ class SimpleTx:
         else:
             hashOutputs = zero32
 
-        digest = hash256(b''.join(
+        self.digest_parts = [
             int_to_ule4(self.version),
             hashPrevouts,
             hashSequence,
-            inp['prevout_hash'],
-            inp['prevout_n'],
-            var_int(scriptcode),
+            inp['prevout_hash'][::-1],
+            int_to_ule4(inp['prevout_n']),
+            var_int(len(scriptcode)),
             scriptcode,
             int_to_ule8(value),
             int_to_ule4(inp['sequence']),
             hashOutputs,
             int_to_ule4(self.locktime),
-            int_to_ule4(nhashtype | (self.forkid << 8)),
-            ))
+            int_to_ule4(nhashtype | (self.forkid << 8))]
+
+        self.joined_digest_parts = b''.join(self.digest_parts)
+
+        digest = hash256(self.joined_digest_parts)
 
         cache[cache_id] = digest
         return digest
@@ -268,7 +271,7 @@ class SimpleTx:
     def hashPrevouts(self,):
         flatten = chain.from_iterable
         return hash256(b''.join(flatten(
-                    (inp['prevout_hash'], int_to_ule4(inp['prevout_n'])) for inp in self.inputs
+                    (inp['prevout_hash'][::-1], int_to_ule4(inp['prevout_n'])) for inp in self.inputs
                     )))
     def hashSequence(self,):
         return hash256(b''.join(
@@ -277,8 +280,7 @@ class SimpleTx:
     def hashOutputs(self,):
         flatten = chain.from_iterable
         return hash256(b''.join(flatten(
-                    serialize_output(out) for out in self.outputs
-                    )))
+            self.serialize_parts_output(out) for out in self.outputs)))
 
 
     @staticmethod
@@ -334,4 +336,3 @@ def minpush(b):
         return b'\x4d' + int_to_ule2(l) + b
     else:
         return b'\x4e' + int_to_ule4(l) + b
-
