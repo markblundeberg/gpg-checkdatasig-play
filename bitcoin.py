@@ -168,7 +168,7 @@ class SimpleTx:
         """
         return b''.join(self.serialize_parts())
 
-    def digestInput(self, i, nhashtype, scriptcode):
+    def digestInput(self, i, nhashtype, scriptcode, double_hashing = True):
         """
         Return the 32-byte digest for a given input, in given sighash mode.
         You need this to create/verify CHECKSIG signatures.
@@ -183,6 +183,9 @@ class SimpleTx:
         executing script taken from the last OP_CODESEPARATOR, if present.
         For P2SH, 'currently executing script' is defined as the redeemscript.
 
+        If 'double_hashing' is set to false, just a single SHA256 of the digest is returned.
+        This might be useful to test for signed transactions using CHECKDATASIG.
+
         Important: The digestInput result generally depends on the other
         inputs and outputs, except for special cases of nhashtype. Make sure
         you do not call it before you settle these things.
@@ -196,7 +199,7 @@ class SimpleTx:
 
         cache = self.digest_cache
 
-        cache_id = (i, nhashtype, scriptcode)
+        cache_id = (i, nhashtype, scriptcode, double_hashing)
         try:
             return cache[cache_id]
         except KeyError:
@@ -255,7 +258,7 @@ class SimpleTx:
 
         self.joined_digest_parts = b''.join(self.digest_parts)
 
-        digest = hash256(self.joined_digest_parts)
+        digest = [sha256, hash256][double_hashing](self.joined_digest_parts)
 
         cache[cache_id] = digest
         return digest
