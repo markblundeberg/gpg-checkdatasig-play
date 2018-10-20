@@ -329,7 +329,7 @@ def minpush(b):
     elif l < 0x4c:
         return int_to_ubyte(l) + b
     elif l <= 0xff:
-        return b'\x4d' + int_to_ubyte(l) + b
+        return b'\x4c' + int_to_ubyte(l) + b
     elif l <= 0xffff:
         return b'\x4d' + int_to_ule2(l) + b
     else:
